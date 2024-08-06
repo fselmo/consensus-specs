@@ -1,3 +1,5 @@
+import ensurepip
+
 from setuptools import setup, find_packages, Command
 from setuptools.command.build_py import build_py
 from distutils import dir_util
@@ -7,12 +9,9 @@ import os
 import string
 from typing import Dict, List, Sequence, Optional, Tuple
 import ast
-import subprocess
-import sys
 import copy
 from collections import OrderedDict
 import json
-from functools import reduce
 
 from pysetup.constants import (
     # code names
@@ -37,22 +36,38 @@ from pysetup.md_doc_paths import get_md_doc_paths
 
 
 # NOTE: have to programmatically include third-party dependencies in `setup.py`.
-def installPackage(package: str):
-    subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
+def ensure_pip():
+    try:
+        import pip
+    except ImportError:
+        print("pip not found. Installing pip...")
+        ensurepip.bootstrap()
 
+
+# Function to install a package using pip
+def install_package(package):
+    import pip._internal as pip_internal
+    pip_internal.main(['install', package])
+
+
+# Ensure pip is installed
+ensure_pip()
+
+# Install ruamel.yaml
 RUAMEL_YAML_VERSION = "ruamel.yaml==0.17.21"
 try:
     import ruamel.yaml
 except ImportError:
-    installPackage(RUAMEL_YAML_VERSION)
+    install_package(RUAMEL_YAML_VERSION)
 
 from ruamel.yaml import YAML
 
+# Install marko
 MARKO_VERSION = "marko==1.0.2"
 try:
     import marko
 except ImportError:
-    installPackage(MARKO_VERSION)
+    install_package(MARKO_VERSION)
 
 from marko.block import Heading, FencedCode, LinkRefDef, BlankLine
 from marko.inline import CodeSpan
@@ -173,7 +188,7 @@ def _update_constant_vars_with_kzg_setups(constant_vars, preset_name):
     constant_vars['KZG_SETUP_G1_MONOMIAL'] = VariableDefinition(constant_vars['KZG_SETUP_G1_MONOMIAL'].value, str(kzg_setups[0]), comment, None)
     constant_vars['KZG_SETUP_G1_LAGRANGE'] = VariableDefinition(constant_vars['KZG_SETUP_G1_LAGRANGE'].value, str(kzg_setups[1]), comment, None)
     constant_vars['KZG_SETUP_G2_MONOMIAL'] = VariableDefinition(constant_vars['KZG_SETUP_G2_MONOMIAL'].value, str(kzg_setups[2]), comment, None)
-    
+
 
 def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], preset_name=str) -> SpecObject:
     functions: Dict[str, str] = {}
@@ -544,11 +559,16 @@ setup(
         "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
         "lint": ["flake8==5.0.4", "mypy==0.981", "pylint==2.15.3"],
         "generator": ["python-snappy==0.6.1", "filelock", "pathos==0.3.0"],
-        "docs": ["mkdocs==1.4.2", "mkdocs-material==9.1.5", "mdx-truly-sane-lists==1.3",  "mkdocs-awesome-pages-plugin==2.8.0"]
+        "docs": [
+            "mkdocs==1.4.2",
+            "mkdocs-material==9.1.5",
+            "mdx-truly-sane-lists==1.3",
+            "mkdocs-awesome-pages-plugin==2.8.0",
+        ]
     },
     install_requires=[
-        "eth-utils>=2.0.0,<3",
-        "eth-typing>=3.2.0,<4.0.0",
+        "eth-utils>=2.0.0",
+        "eth-typing>=3.2.0",
         "pycryptodome==3.15.0",
         "py_ecc==6.0.0",
         "milagro_bls_binding==1.9.0",
